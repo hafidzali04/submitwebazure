@@ -1,3 +1,33 @@
+<?php
+require_once 'vendor/autoload.php';
+require_once "./random_string.php";
+
+use MicrosoftAzure\Storage\Blob\BlobRestProxy;
+use MicrosoftAzure\Storage\Common\Exceptions\ServiceException;
+use MicrosoftAzure\Storage\Blob\Models\ListBlobsOptions;
+use MicrosoftAzure\Storage\Blob\Models\CreateContainerOptions;
+use MicrosoftAzure\Storage\Blob\Models\PublicAccessType;
+
+$connectionString = "DefaultEndpointsProtocol=https;AccountName=submit2;AccountKey=hihMS1X+II2o+6WJIZ8BTrEqSWO5uWcnUYK98eCnj9DTQW4gUyWDGRsu2zjqWpClcPlYF+F2fgo/PPMv4/KRqQ==;EndpointSuffix=core.windows.net";
+
+$containerName = "blobb";
+// Create blob client.
+$blobClient = BlobRestProxy::createBlobService($connectionString);
+
+
+if (isset($_POST['submit'])) {
+	$fileToUpload = strtolower($_FILES["fileToUpload"]["name"]);
+	$content = fopen($_FILES["fileToUpload"]["tmp_name"], "r");
+	// echo fread($content, filesize($fileToUpload));
+	$blobClient->createBlockBlob($containerName, $fileToUpload, $content);
+	header("Location: analyze.php");
+}
+$listBlobsOptions = new ListBlobsOptions();
+$listBlobsOptions->setPrefix("");
+$result = $blobClient->listBlobs($containerName, $listBlobsOptions);
+?>
+
+<!DOCTYPE html>
 <html>
  <head>
  <meta charset="utf-8">
@@ -15,89 +45,70 @@
     <link href="starter-template.css" rel="stylesheet">
   </head>
 <body>
-    <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarsExampleDefault">
-            <ul class="navbar-nav mr-auto">
-                 <li class="nav-item active">
-                <a class="nav-link" href="index.php">SUBMIT 1<span class="sr-only">(current)</span></a>
-            </li>
-            <li class="nav-item active">
-                <a class="nav-link" href="analyze.php">Analisis Gambar<span class="sr-only">(current)</span></a>
-            </li>
-        </div>
-        </nav>
+	<nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+		<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+			<span class="navbar-toggler-icon"></span>
+		</button>
+		<div class="collapse navbar-collapse" id="navbarsExampleDefault">
+			<ul class="navbar-nav mr-auto">
+			<li class="nav-item active">
+				<a class="nav-link" href="https://submits.azurewebsites.net/analyze.php">Analisis Gambar<span class="sr-only">(current)</span></a>
+			</li>
+		</div>
+		</nav>
+		<main role="main" class="container">
+    		<div class="starter-template"> <br><br><br>
+        		<h1>Analisis Gambar</h1>
+				<p class="lead">Pilih Gambar yang ingin Anda Analyze.<br> Kemudian Click <b>Upload</b>, untuk menganlisa gambar pilih <b>analyze</b> pada tabel.</p>
+				<span class="border-top my-3"></span>
+			</div>
+		<div class="mt-4 mb-2">
+			<form class="d-flex justify-content-lefr" action="analyze.php" method="post" enctype="multipart/form-data">
+				<input type="file" name="fileToUpload" accept=".jpeg,.jpg,.png" required="">
+				<input type="submit" name="submit" value="Upload">
+			</form>
+		</div>
+		<br>
+		<br>
+		<h4>Total Files : <?php echo sizeof($result->getBlobs())?></h4>
+		<table class='table table-hover'>
+			<thead>
+				<tr>
+					<th>File Name</th>
+					<th>File URL</th>
+					<th>Action</th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php
+				do {
+					foreach ($result->getBlobs() as $blob)
+					{
+						?>
+						<tr>
+							<td><?php echo $blob->getName() ?></td>
+							<td><?php echo $blob->getUrl() ?></td>
+							<td>
+								<form action="computervision.php" method="post">
+									<input type="hidden" name="url" value="<?php echo $blob->getUrl()?>">
+									<input type="submit" name="submit" value="Analyze!" class="btn btn-primary">
+								</form>
+							</td>
+						</tr>
+						<?php
+					}
+					$listBlobsOptions->setContinuationToken($result->getContinuationToken());
+				} while($result->getContinuationToken());
+				?>
+			</tbody>
+		</table>
 
- <h1>Register here!</h1>
- <p>Fill in your name and email address, then click <strong>Submit</strong> to register.</p>
- <form method="post" action="index.php" enctype="multipart/form-data" >
-       Name  <input type="text" name="name" id="name"/></br></br>
-       Email <input type="text" name="email" id="email"/></br></br>
-       Job <input type="text" name="job" id="job"/></br></br>
-       <input type="submit" name="submit" value="Submit" />
-       <input type="submit" name="load_data" value="Load Data" />
- </form>
- <?php
-    $host = "selecteddb.database.windows.net";
-    $user = "ali";
-    $pass = "H@fidz98";
-    $db   = "dbname";
+	</div>
 
-    try {
-        $conn = new PDO("sqlsrv:server = $host; Database = $db", $user, $pass);
-        $conn->setAttribute( PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION );
-    } catch(Exception $e) {
-        echo "Failed: " . $e;
-    }
-
-    if (isset($_POST['submit'])) {
-        try {
-            $name = $_POST['name'];
-            $email = $_POST['email'];
-            $job = $_POST['job'];
-            $date = date("Y-m-d");
-            // Insert data
-            $sql_insert = "INSERT INTO dbo.Registration (name, email, job, date) 
-                        VALUES (?,?,?,?)";
-            $stmt = $conn->prepare($sql_insert);
-            $stmt->bindValue(1, $name);
-            $stmt->bindValue(2, $email);
-            $stmt->bindValue(3, $job);
-            $stmt->bindValue(4, $date);
-            $stmt->execute();
-        } catch(Exception $e) {
-            echo "Failed: " . $e;
-        }
-
-        echo "<h3>Your're registered!</h3>";
-    } else if (isset($_POST['load_data'])) {
-        try {
-            $sql_select = "SELECT * FROM dbo.Registration";
-            $stmt = $conn->query($sql_select);
-            $registrants = $stmt->fetchAll(); 
-            if(count($registrants) > 0) {
-                echo "<h2>People who are registered:</h2>";
-                echo "<table>";
-                echo "<tr><th>Name</th>";
-                echo "<th>Email</th>";
-                echo "<th>Job</th>";
-                echo "<th>Date</th></tr>";
-                foreach($registrants as $registrant) {
-                    echo "<tr><td>".$registrant['name']."</td>";
-                    echo "<td>".$registrant['email']."</td>";
-                    echo "<td>".$registrant['job']."</td>";
-                    echo "<td>".$registrant['date']."</td></tr>";
-                }
-                echo "</table>";
-            } else {
-                echo "<h3>No one is currently registered.</h3>";
-            }
-        } catch(Exception $e) {
-            echo "Failed: " . $e;
-        }
-    }
- ?>
- </body>
- </html>
+<!-- Placed at the end of the document so the pages load faster -->
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script>window.jQuery || document.write('<script src="../../assets/js/vendor/jquery-slim.min.js"><\/script>')</script>
+    <script src="https://getbootstrap.com/docs/4.0/assets/js/vendor/popper.min.js"></script>
+    <script src="https://getbootstrap.com/docs/4.0/dist/js/bootstrap.min.js"></script>
+  </body>
+</html>
