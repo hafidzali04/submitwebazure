@@ -11,7 +11,7 @@ use MicrosoftAzure\Storage\Blob\Models\CreateContainerOptions;
 use MicrosoftAzure\Storage\Blob\Models\PublicAccessType;
 
 $connectionString = "DefaultEndpointsProtocol=https;AccountName=submit2;AccountKey=hihMS1X+II2o+6WJIZ8BTrEqSWO5uWcnUYK98eCnj9DTQW4gUyWDGRsu2zjqWpClcPlYF+F2fgo/PPMv4/KRqQ==;EndpointSuffix=core.windows.net";
-$containerName = "submit2";
+$containerName = "blobb";
 
 $blobClient = BlobRestProxy::createBlobService($connectionString);
 
@@ -40,7 +40,7 @@ $result = $blobClient->listBlobs($containerName, $listBlobsOptions);
 </head>
 
 <body>
-    <form action="phpQS.php" method="POST" enctype="multipart/form-data">
+    <form action="index.php" method="POST" enctype="multipart/form-data">
         <input type="file" name="fileToUpload" accept=".jpeg,.jpg,.png" required="">
         <input type="submit" name="submit" value="Upload Gambar">
     </form>
